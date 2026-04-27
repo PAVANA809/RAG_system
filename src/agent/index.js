@@ -17,6 +17,7 @@ const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'nomic-embed-text';
 const LLM_MODEL = process.env.LLM_MODEL || 'qwen2.5-coder:7b';
 const QDRANT_COLLECTION = process.env.QDRANT_COLLECTION || 'documents';
 const SEARCH_LIMIT = parseInt(process.env.SEARCH_LIMIT || '10');
+const SCORE_THRESHOLD = parseFloat(process.env.SCORE_THRESHOLD || '0.5');
 const PORT = process.env.PORT || 3000;
 
 const ollama = new Ollama({ host: OLLAMA_BASE_URL });
@@ -42,17 +43,30 @@ async function initializeMcpClient() {
 }
 
 async function buildSystemPrompt(contexts) {
+  if (contexts.length === 0) {
+    return `You are a helpful assistant. You do NOT have any relevant documents for this question. 
+Respond ONLY with: "I don't have enough information to answer that question."
+Do NOT make up information. Do NOT use your training data. Do NOT guess.`;
+  }
+
   const contextText = contexts
     .map((c, i) => `[${i + 1}] Source: ${c.source}\n${c.text}`)
     .join('\n\n');
 
-  return `You are a helpful assistant that answers questions based on the provided documents.
-Use the following context to answer the user's question. If the context doesn't contain enough information to answer, say so clearly. Be concise, accurate, and cite the source numbers when referencing information.
+  return `You are a strict retrieval-augmented assistant. Your job is to answer the user's question using ONLY the Context documents provided below.
+
+CRITICAL RULES:
+1. Use ONLY the information in the Context section below. Do NOT use your pre-trained knowledge.
+2. If the answer is not found in the Context, respond EXACTLY with: "I don't have enough information to answer that question."
+3. Do NOT guess, speculate, or make up facts.
+4. Do NOT use information from previous conversation turns unless it also appears in the Context.
+5. Be concise. Cite source numbers (e.g., [1], [2]) when referencing information.
+6. If the Context is empty or irrelevant, say you don't have enough information.
 
 Context:
 ${contextText}
 
-Answer the user's question based ONLY on the context above. If the answer is not in the context, say "I don't have enough information to answer that question."`;
+Remember: Answer based ONLY on the Context above. If unsure, say "I don't have enough information to answer that question."`;
 }
 
 app.post('/api/chat', async (req, res) => {
@@ -115,11 +129,13 @@ app.post('/api/chat', async (req, res) => {
         throw new Error(searchData.error);
       }
 
-      contexts = searchData.map((point) => ({
-        text: point.payload?.text || '',
-        source: point.payload?.source || 'unknown',
-        score: point.score,
-      }));
+      contexts = searchData
+        .map((point) => ({
+          text: point.payload?.text || '',
+          source: point.payload?.source || 'unknown',
+          score: point.score,
+        }))
+        .filter((c) => c.score >= SCORE_THRESHOLD);
 
       // Log retrieved sources for debugging
       const uniqueSources = [...new Set(contexts.map((c) => c.source))];
@@ -133,21 +149,27 @@ app.post('/api/chat', async (req, res) => {
     try {
       const systemPrompt = await buildSystemPrompt(contexts);
 
-      // Build messages: system prompt + conversation history + current user message
-      const messages = [
-        { role: 'system', content: systemPrompt },
-        ...history,
-        { role: 'user', content: message },
-      ];
+      // If no relevant contexts found after filtering, return directly without calling LLM
+      if (contexts.length === 0) {
+        response = "I don't have enough information to answer that question.";
+        console.log('⚠️ No relevant contexts above threshold, skipping LLM call\n');
+      } else {
+        // Build messages: system prompt + conversation history + current user message
+        const messages = [
+          { role: 'system', content: systemPrompt },
+          ...history,
+          { role: 'user', content: message },
+        ];
 
-      const chatResponse = await ollama.chat({
-        model: LLM_MODEL,
-        messages,
-        stream: false,
-      });
+        const chatResponse = await ollama.chat({
+          model: LLM_MODEL,
+          messages,
+          stream: false,
+        });
 
-      response = chatResponse.message.content;
-      console.log('✅ LLM response generated\n');
+        response = chatResponse.message.content;
+        console.log('✅ LLM response generated\n');
+      }
 
       // Store this turn in history
       history.push({ role: 'user', content: message });

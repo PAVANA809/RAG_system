@@ -11,6 +11,15 @@ import { QdrantClient } from '@qdrant/js-client-rest';
 const QDRANT_URL = process.env.QDRANT_URL || 'http://localhost:6333';
 const qdrant = new QdrantClient({ url: QDRANT_URL });
 
+function safeStringify(value) {
+  return JSON.stringify(value, (_key, val) => {
+    if (typeof val === 'bigint') {
+      return val.toString();
+    }
+    return val;
+  });
+}
+
 const server = new Server(
   { name: 'qdrant-mcp-server', version: '1.0.0' },
   { capabilities: { tools: {} } }
@@ -141,7 +150,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         with_payload: true,
       });
       return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
+        content: [{ type: 'text', text: safeStringify(result) }],
       };
     }
 
@@ -151,7 +160,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         points: args.points,
       });
       return {
-        content: [{ type: 'text', text: JSON.stringify({ success: true, upserted: args.points.length }) }],
+        content: [{ type: 'text', text: safeStringify({ success: true, upserted: args.points.length }) }],
       };
     }
 
@@ -163,28 +172,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         },
       });
       return {
-        content: [{ type: 'text', text: JSON.stringify({ success: true, collection: args.collection }) }],
+        content: [{ type: 'text', text: safeStringify({ success: true, collection: args.collection }) }],
       };
     }
 
     if (name === 'list_collections') {
       const result = await qdrant.getCollections();
       return {
-        content: [{ type: 'text', text: JSON.stringify(result.collections.map((c) => c.name)) }],
+        content: [{ type: 'text', text: safeStringify(result.collections.map((c) => c.name)) }],
       };
     }
 
     if (name === 'get_collection_info') {
       const result = await qdrant.getCollection(args.collection);
       return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
+        content: [{ type: 'text', text: safeStringify(result) }],
       };
     }
 
     throw new Error(`Unknown tool: ${name}`);
   } catch (error) {
     return {
-      content: [{ type: 'text', text: JSON.stringify({ error: error.message }) }],
+      content: [{ type: 'text', text: safeStringify({ error: error.message }) }],
       isError: true,
     };
   }
