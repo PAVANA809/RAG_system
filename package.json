@@ -1,0 +1,28 @@
+{
+  "name": "rag-system",
+  "version": "1.0.0",
+  "description": "RAG system with Ollama, Qdrant, and MCP",
+  "type": "module",
+  "scripts": {
+    "start": "node src/agent/index.js",
+    "ingest": "node src/document-processor/index.js",
+    "mcp-server": "node src/mcp-server/server.js"
+  },
+  "keywords": [
+    "rag",
+    "ollama",
+    "qdrant",
+    "mcp"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@qdrant/js-client-rest": "^1.12.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "mammoth": "^1.8.0",
+    "ollama": "^0.5.9",
+    "pdf-parse": "^1.1.1"
+  }
+}

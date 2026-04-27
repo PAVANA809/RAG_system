@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG System - Ask Your Documents</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>📚 RAG System</h2>
+        <p class="subtitle">Ask questions about your documents</p>
+      </div>
+      <div class="sidebar-info">
+        <div class="info-item">
+          <span class="info-label">Model</span>
+          <span class="info-value" id="model-info">Loading...</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Collections</span>
+          <span class="info-value" id="collections-info">Loading...</span>
+        </div>
+      </div>
+      <div class="sidebar-footer">
+        <p>Put files in <code>./data</code> and run <code>npm run ingest</code></p>
+      </div>
+    </aside>
+
+    <main class="chat-container">
+      <div class="chat-header">
+        <h1>💬 Chat</h1>
+        <button id="new-chat-btn" class="new-chat-btn" title="Start a new conversation">
+          <span>+ New Chat</span>
+        </button>
+      </div>
+
+      <div id="chat-messages" class="chat-messages">
+        <div class="welcome-message">
+          <h3>👋 Welcome!</h3>
+          <p>Ask me anything about your uploaded documents. I'll search through them and give you accurate answers.</p>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-wrapper">
+          <input
+            type="text"
+            id="message-input"
+            placeholder="Ask a question about your documents..."
+            autocomplete="off"
+          />
+          <button id="send-btn" aria-label="Send message">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
